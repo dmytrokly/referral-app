@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 
@@ -18,6 +18,8 @@ type Service = {
   id: string
   name: string
   normalized_name: string
+  country: string | null
+  code_count?: number
 }
 
 export default function HomePage() {
@@ -28,8 +30,26 @@ export default function HomePage() {
   const [codeIndex, setCodeIndex] = useState(0)
   const [loading, setLoading] = useState(false)
   const [notFound, setNotFound] = useState(false)
+  const [services, setServices] = useState<Service[]>([])
 
   const currentCode = allCodes[codeIndex]
+
+  useEffect(() => {
+    fetchAllServices()
+  }, [])
+
+  const fetchAllServices = async () => {
+    const { data, error } = await supabase
+      .from('services_with_code_counts') // make sure this is a view or use `.select('id, name, normalized_name, country, code_count')` from services + join
+      .select('id, name, normalized_name, country, code_count')
+
+    if (error) {
+      console.error('Error fetching services:', error.message)
+      return
+    }
+
+    setServices(data || [])
+  }
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -41,17 +61,20 @@ export default function HomePage() {
 
     const normalized = query.toLowerCase().replace(/[^a-z0-9]/gi, '')
 
-    const { data: services } = await supabase.rpc('fuzzy_service_match', {
+    const { data: fuzzyMatches } = await supabase.rpc('fuzzy_service_match', {
       search_input: normalized,
     })
 
-    if (!services || services.length === 0) {
+    const exactMatch = services.find((s) => s.normalized_name === normalized)
+
+    if (exactMatch) {
+      setSuggestedService(exactMatch)
+    } else if (fuzzyMatches && fuzzyMatches.length > 0) {
+      setSuggestedService(fuzzyMatches[0])
+    } else {
       setNotFound(true)
-      setLoading(false)
-      return
     }
 
-    setSuggestedService(services[0])
     setLoading(false)
   }
 
@@ -179,6 +202,26 @@ export default function HomePage() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* 🏆 Explore Top Services Section */}
+      {services.length > 0 && (
+        <div className="mt-10">
+          <h2 className="text-xl font-semibold mb-4">Explore Top Services</h2>
+          <ul className="list-disc list-inside space-y-2">
+            {services
+              .sort((a, b) => (b.code_count ?? 0) - (a.code_count ?? 0))
+              .slice(0, 10)
+              .map((service) => (
+                <li key={service.id} className="ml-4">
+                  <span className="font-medium">{service.name}</span>{' '}
+                  <span className="text-blue-600">
+                    ({service.code_count ?? 0} codes)
+                  </span>
+                </li>
+              ))}
+          </ul>
         </div>
       )}
     </div>
