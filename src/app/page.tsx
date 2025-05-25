@@ -1,103 +1,195 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
+import { useState } from 'react'
+import Link from 'next/link'
+import { supabase } from '@/lib/supabase'
+
+type Code = {
+  id: string
+  service_id: string
+  code_text: string
+  description: string
+  country: string | null
+  validity_date: string | null
+  created_at?: string
+}
+
+type Service = {
+  id: string
+  name: string
+  normalized_name: string
+}
+
+export default function HomePage() {
+  const [query, setQuery] = useState('')
+  const [suggestedService, setSuggestedService] = useState<Service | null>(null)
+  const [confirmed, setConfirmed] = useState(false)
+  const [allCodes, setAllCodes] = useState<Code[]>([])
+  const [codeIndex, setCodeIndex] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const [notFound, setNotFound] = useState(false)
+
+  const currentCode = allCodes[codeIndex]
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setNotFound(false)
+    setConfirmed(false)
+    setSuggestedService(null)
+    setAllCodes([])
+
+    const normalized = query.toLowerCase().replace(/[^a-z0-9]/gi, '')
+
+    const { data: services } = await supabase.rpc('fuzzy_service_match', {
+      search_input: normalized,
+    })
+
+    if (!services || services.length === 0) {
+      setNotFound(true)
+      setLoading(false)
+      return
+    }
+
+    setSuggestedService(services[0])
+    setLoading(false)
+  }
+
+  const handleConfirm = async () => {
+    if (!suggestedService) return
+    setLoading(true)
+
+    const { data: codes } = await supabase
+      .from('codes')
+      .select('*')
+      .eq('service_id', suggestedService.id)
+
+    if (!codes || codes.length === 0) {
+      setNotFound(true)
+      setLoading(false)
+      return
+    }
+
+    setAllCodes(shuffleArray(codes))
+    setCodeIndex(0)
+    setConfirmed(true)
+    setLoading(false)
+  }
+
+  const handleRetry = () => {
+    if (allCodes.length > 1) {
+      setCodeIndex((prev) => (prev + 1) % allCodes.length)
+    }
+  }
+
+  const handleReject = () => {
+    setSuggestedService(null)
+    setConfirmed(false)
+  }
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="max-w-xl mx-auto p-6">
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Find a Referral Code</h1>
+        <Link href="/submit" className="text-blue-600 hover:underline text-sm">
+          Submit a code →
+        </Link>
+      </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      <form onSubmit={handleSearch} className="space-y-4">
+        <input
+          required
+          placeholder="Enter service name (e.g. N26)"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="w-full border rounded p-2"
+        />
+        <button
+          type="submit"
+          className="bg-blue-600 text-white px-4 py-2 rounded"
+        >
+          Search
+        </button>
+      </form>
+
+      {loading && <p className="mt-4">Searching...</p>}
+      {notFound && (
+        <p className="mt-4 text-red-600">No codes found for that service.</p>
+      )}
+
+      {!confirmed && suggestedService && (
+        <div className="mt-6 p-4 border rounded bg-yellow-50">
+          <p className="mb-2">
+            Did you mean <strong>{suggestedService.name}</strong>?
+          </p>
+          <div className="space-x-4">
+            <button
+              onClick={handleConfirm}
+              className="bg-blue-600 text-white px-4 py-2 rounded"
+            >
+              Yes
+            </button>
+            <button
+              onClick={handleReject}
+              className="border border-gray-400 px-4 py-2 rounded"
+            >
+              No
+            </button>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      )}
+
+      {confirmed && currentCode && (
+        <div className="mt-6 border p-4 rounded bg-gray-50 space-y-2">
+          <p className="text-lg font-semibold">🎁 Code Found!</p>
+          <p>
+            <strong>Code:</strong> {currentCode.code_text}
+          </p>
+          <p>
+            <strong>Description:</strong> {currentCode.description}
+          </p>
+          {currentCode.country && (
+            <p>
+              <strong>Country:</strong> {currentCode.country}
+            </p>
+          )}
+          {currentCode.validity_date && (
+            <p>
+              <strong>Valid Until:</strong>{' '}
+              {new Date(currentCode.validity_date).toLocaleDateString()}
+            </p>
+          )}
+
+          <div className="relative inline-block mt-4 group">
+            <button
+              onClick={handleRetry}
+              disabled={allCodes.length <= 1}
+              className={`px-4 py-2 rounded text-sm border w-full sm:w-auto
+                ${
+                  allCodes.length <= 1
+                    ? 'text-gray-400 border-gray-300 cursor-not-allowed bg-gray-100'
+                    : 'text-blue-600 border-blue-600 hover:bg-blue-50'
+                }`}
+            >
+              Try another code →
+            </button>
+            {allCodes.length <= 1 && (
+              <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 px-3 py-1 text-xs text-white bg-gray-800 rounded shadow">
+                Only one code available
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
-  );
+  )
+}
+
+function shuffleArray<T>(array: T[]): T[] {
+  const copy = [...array]
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[copy[i], copy[j]] = [copy[j], copy[i]]
+  }
+  return copy
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 
 export default function SubmitPage() {
@@ -66,7 +67,14 @@ export default function SubmitPage() {
 
   return (
     <div className="max-w-xl mx-auto p-6">
+      <div className="mb-6">
+        <Link href="/" className="text-blue-600 hover:underline text-sm">
+          ← Back to home
+        </Link>
+      </div>
+
       <h1 className="text-2xl font-bold mb-4">Submit a Referral Code</h1>
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <input
           required
