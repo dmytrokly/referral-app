@@ -10,6 +10,7 @@ type Code = {
   code_text: string
   description: string
   service_id: string
+  status?: string
   created_at?: string
   service: {
     name: string
@@ -21,6 +22,7 @@ type RawCode = {
   code_text: string
   description: string
   service_id: string
+  status?: string
   services: {
     name?: string
   } | null
@@ -32,44 +34,41 @@ export default function AdminPage() {
   const [codes, setCodes] = useState<Code[]>([])
   const [loading, setLoading] = useState(false)
 
- const fetchCodes = async () => {
-  setLoading(true)
+  const fetchCodes = async () => {
+    setLoading(true)
 
-  const { data, error } = await supabase
-    .from('codes')
-    .select(`
-      id,
-      code_text,
-      description,
-      service_id,
-      services (
-        name
-      )
-    `)
+    const { data, error } = await supabase
+      .from('codes')
+      .select(`
+        id,
+        code_text,
+        description,
+        service_id,
+        status,
+        services (
+          name
+        )
+      `)
 
-  if (error) {
-    console.error('❌ Supabase fetch error:', error.message, error)
+    if (error) {
+      console.error('❌ Supabase fetch error:', error.message)
+      setLoading(false)
+      return
+    }
+
+    if (data) {
+      const mapped = (data as RawCode[]).map((c) => ({
+        ...c,
+        status: c.status ?? 'active',
+        service: {
+          name: c.services?.name ?? 'Unknown',
+        },
+      }))
+      setCodes(mapped)
+    }
+
     setLoading(false)
-    return
   }
-
-  console.log('✅ Raw Supabase data:', data)
-
-  if (data) {
-    const mapped = (data as RawCode[]).map((c) => ({
-      ...c,
-      service: {
-        name: c.services?.name ?? 'Unknown',
-      },
-    }))
-
-    console.log('✅ Parsed codes:', mapped)
-    setCodes(mapped)
-  }
-
-  setLoading(false)
-}
-
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this code?')) return
@@ -83,6 +82,25 @@ export default function AdminPage() {
     }
 
     setCodes((prev) => prev.filter((c) => c.id !== id))
+  }
+
+  const handleReactivate = async (id: string) => {
+    const { error } = await supabase
+      .from('codes')
+      .update({ status: 'active' })
+      .eq('id', id)
+
+    if (error) {
+      console.error('Error reactivating code:', error.message)
+      alert('Failed to reactivate code.')
+      return
+    }
+
+    setCodes((prev) =>
+      prev.map((c) =>
+        c.id === id ? { ...c, status: 'active' } : c
+      )
+    )
   }
 
   useEffect(() => {
@@ -128,19 +146,36 @@ export default function AdminPage() {
           {codes.map((code) => (
             <li
               key={code.id}
-              className="border p-4 rounded flex justify-between items-center"
+              className={`border p-4 rounded flex justify-between items-start gap-4 ${
+                code.status === 'inactive' ? 'bg-red-50' : ''
+              }`}
             >
               <div>
                 <p><strong>Service:</strong> {code.service.name}</p>
                 <p><strong>Code:</strong> {code.code_text}</p>
                 <p className="text-sm text-gray-600">{code.description}</p>
+                {code.status === 'inactive' && (
+                  <p className="text-sm text-red-600 mt-1">
+                    ⚠️ Disabled due to feedback
+                  </p>
+                )}
               </div>
-              <button
-                className="text-red-600 hover:underline"
-                onClick={() => handleDelete(code.id)}
-              >
-                Delete
-              </button>
+              <div className="flex flex-col items-end space-y-2">
+                <button
+                  className="text-red-600 hover:underline"
+                  onClick={() => handleDelete(code.id)}
+                >
+                  Delete
+                </button>
+                {code.status === 'inactive' && (
+                  <button
+                    className="text-blue-600 hover:underline text-sm"
+                    onClick={() => handleReactivate(code.id)}
+                  >
+                    Reactivate
+                  </button>
+                )}
+              </div>
             </li>
           ))}
         </ul>

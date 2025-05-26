@@ -1,36 +1,102 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+Referral Code & Voucher Sharing App
+A simple web application to discover, submit, and manage referral codes and discount vouchers. Built with Next.js and Supabase, designed to be mobile-friendly and easy to maintain.
 
-## Getting Started
+What I Learned
+While building this project, I gained experience with:
 
-First, run the development server:
+Implementing fuzzy search using Supabase RPC functions
 
-```bash
+Managing structured data in Supabase (services, codes, feedback)
+
+Building a basic admin panel with password protection
+
+Creating feedback logic that disables codes after multiple failure reports
+
+Using the Clipboard API to let users copy codes easily
+
+Writing UI logic for retrying codes, handling copy state, and tracking feedback
+
+Displaying lightweight usage statistics in the frontend
+
+Managing optimistic UI updates for real-time interaction
+
+Features
+Public (User-Facing)
+Search and Suggest
+
+Fuzzy match service names like "n 26" → "N26"
+
+Only services with active codes are shown
+
+Get Referral Code
+
+Displays one random code per search
+
+Retry to get another if available
+
+Submit Feedback
+
+Users can report whether a code worked or not
+
+Failed codes are marked with reasons (e.g. expired, used)
+
+Code Copying
+
+Copy referral code or link to clipboard
+
+Copy count is stored in the database
+
+Explore Top Services
+
+Shows a list of services with the most referral codes
+
+Code Metadata
+
+View when the code was added and how many users reported it working or not
+
+Admin Panel
+Password-protected route
+
+View all submitted codes
+
+View inactive codes and reasons for deactivation
+
+Manually delete or reactivate any code
+
+Simple backend-only moderation interface
+
+Getting Started
+Install dependencies:
+
+bash
+Copy
+Edit
+npm install
+Start development server:
+
+bash
+Copy
+Edit
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Visit http://localhost:3000
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Tech Stack
+Next.js (App Router)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Supabase (PostgreSQL)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Tailwind CSS
 
-## Learn More
+No authentication required for public features
 
-To learn more about Next.js, take a look at the following resources:
+Potential Improvements
+Add proper session-based admin login
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Track per-user actions anonymously
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Add filtering by country or reward type
 
-## Deploy on Vercel
+Improve analytics in the admin panel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Add benefit parsing or categorization for rewards
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
