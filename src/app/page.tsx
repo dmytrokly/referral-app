@@ -40,7 +40,7 @@ export default function HomePage() {
 
   const fetchAllServices = async () => {
     const { data, error } = await supabase
-      .from('services_with_code_counts') // make sure this is a view or use `.select('id, name, normalized_name, country, code_count')` from services + join
+      .from('services_with_code_counts')
       .select('id, name, normalized_name, country, code_count')
 
     if (error) {
@@ -165,6 +165,11 @@ export default function HomePage() {
       {confirmed && currentCode && (
         <div className="mt-6 border p-4 rounded bg-gray-50 space-y-2">
           <p className="text-lg font-semibold">🎁 Code Found!</p>
+          {suggestedService && (
+            <p>
+              <strong>Service:</strong> {suggestedService.name}
+            </p>
+          )}
           <p>
             <strong>Code:</strong> {currentCode.code_text}
           </p>
@@ -206,11 +211,12 @@ export default function HomePage() {
       )}
 
       {/* 🏆 Explore Top Services Section */}
-      {services.length > 0 && (
+      {services.some((s) => (s.code_count ?? 0) > 0) && (
         <div className="mt-10">
           <h2 className="text-xl font-semibold mb-4">Explore Top Services</h2>
           <ul className="list-disc list-inside space-y-2">
             {services
+              .filter((s) => (s.code_count ?? 0) > 0)
               .sort((a, b) => (b.code_count ?? 0) - (a.code_count ?? 0))
               .slice(0, 10)
               .map((service) => (

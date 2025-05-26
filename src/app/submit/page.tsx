@@ -1,8 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+
+type Service = {
+  id: string
+  name: string
+  normalized_name: string
+}
 
 export default function SubmitPage() {
   const [service, setService] = useState('')
@@ -12,13 +18,40 @@ export default function SubmitPage() {
   const [validity, setValidity] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'done'>('idle')
 
+  const [allServices, setAllServices] = useState<Service[]>([])
+  const [suggestedService, setSuggestedService] = useState<Service | null>(null)
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      const { data, error } = await supabase
+        .from('services')
+        .select('id, name, normalized_name')
+
+      if (!error && data) setAllServices(data)
+    }
+    fetchServices()
+  }, [])
+
+  useEffect(() => {
+    if (service.length < 3) return
+    const normalized = service.toLowerCase().replace(/[^a-z0-9]/gi, '')
+    const match = allServices.find((s) => s.normalized_name === normalized)
+    if (match) {
+      setSuggestedService(null)
+      return
+    }
+    const guess = allServices.find((s) =>
+      normalized.includes(s.normalized_name.slice(0, 4))
+    )
+    setSuggestedService(guess || null)
+  }, [service, allServices])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setStatus('loading')
 
     const normalized = service.toLowerCase().replace(/[^a-z0-9]/gi, '')
 
-    // 1. Find or create the service
     let { data: existing } = await supabase
       .from('services')
       .select('id')
@@ -41,7 +74,6 @@ export default function SubmitPage() {
       existing = newService
     }
 
-    // 2. Insert the code
     const { error: codeError } = await supabase.from('codes').insert({
       service_id: existing!.id,
       code_text: code,
@@ -83,6 +115,29 @@ export default function SubmitPage() {
           onChange={(e) => setService(e.target.value)}
           className="w-full border rounded p-2"
         />
+
+        {suggestedService && (
+          <div className="bg-yellow-50 border p-3 rounded text-sm">
+            Did you mean <strong>{suggestedService.name}</strong>?
+            <div className="space-x-4 mt-2">
+              <button
+                type="button"
+                className="text-blue-600 underline"
+                onClick={() => setService(suggestedService.name)}
+              >
+                Yes
+              </button>
+              <button
+                type="button"
+                className="text-gray-600 underline"
+                onClick={() => setSuggestedService(null)}
+              >
+                No
+              </button>
+            </div>
+          </div>
+        )}
+
         <input
           required
           placeholder="Code or referral link"
