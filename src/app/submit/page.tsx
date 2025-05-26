@@ -33,17 +33,37 @@ export default function SubmitPage() {
   }, [])
 
   useEffect(() => {
-    if (service.length < 3) return
-    const normalized = service.toLowerCase().replace(/[^a-z0-9]/gi, '')
-    const match = allServices.find((s) => s.normalized_name === normalized)
-    if (match) {
-      setSuggestedService(null)
-      return
+    const runFuzzyCheck = async () => {
+      if (service.length < 3) return
+
+      const normalized = service.toLowerCase().replace(/[^a-z0-9]/gi, '')
+      const exactMatch = allServices.find((s) => s.normalized_name === normalized)
+
+      if (exactMatch) {
+        setSuggestedService(null)
+        return
+      }
+
+      const { data: fuzzyMatches } = await supabase.rpc('fuzzy_service_match', {
+        search_input: normalized,
+      })
+
+      const matched = await Promise.all(
+        (fuzzyMatches ?? []).map(async (match: Service) => {
+          const { count } = await supabase
+            .from('codes')
+            .select('*', { count: 'exact', head: true })
+            .eq('service_id', match.id)
+
+          return (count ?? 0) > 0 ? match : null
+        })
+      )
+
+      const validMatch = matched.find(Boolean) as Service | null
+      setSuggestedService(validMatch || null)
     }
-    const guess = allServices.find((s) =>
-      normalized.includes(s.normalized_name.slice(0, 4))
-    )
-    setSuggestedService(guess || null)
+
+    runFuzzyCheck()
   }, [service, allServices])
 
   const handleSubmit = async (e: React.FormEvent) => {

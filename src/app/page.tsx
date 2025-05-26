@@ -61,20 +61,33 @@ export default function HomePage() {
 
     const normalized = query.toLowerCase().replace(/[^a-z0-9]/gi, '')
 
+    const exactMatch = services.find((s) => s.normalized_name === normalized)
+    if (exactMatch && (exactMatch.code_count ?? 0) > 0) {
+      setSuggestedService(exactMatch)
+      setLoading(false)
+      return
+    }
+
     const { data: fuzzyMatches } = await supabase.rpc('fuzzy_service_match', {
       search_input: normalized,
     })
 
-    const exactMatch = services.find((s) => s.normalized_name === normalized)
+    if (fuzzyMatches && fuzzyMatches.length > 0) {
+      for (const match of fuzzyMatches as Service[]) {
+        const { count } = await supabase
+          .from('codes')
+          .select('*', { count: 'exact', head: true })
+          .eq('service_id', match.id)
 
-    if (exactMatch) {
-      setSuggestedService(exactMatch)
-    } else if (fuzzyMatches && fuzzyMatches.length > 0) {
-      setSuggestedService(fuzzyMatches[0])
-    } else {
-      setNotFound(true)
+        if ((count ?? 0) > 0) {
+          setSuggestedService(match)
+          setLoading(false)
+          return
+        }
+      }
     }
 
+    setNotFound(true)
     setLoading(false)
   }
 
