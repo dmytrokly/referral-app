@@ -8,9 +8,9 @@ While building this project, I gained experience with:
 
 - Implementing fuzzy search using Supabase RPC functions
 - Managing structured data in Supabase (services, codes, feedback)
-- Building a basic admin panel with password protection
+- Building a basic admin panel with basic authentication
 - Creating feedback logic that disables codes after multiple failure reports
-- Using the Clipboard API to let users copy codes easily
+- Using the Clipboard API to let users copy code easily
 - Writing UI logic for retrying codes, handling copy state, and tracking feedback
 - Displaying lightweight usage statistics in the frontend
 - Managing optimistic UI updates for real-time interaction
@@ -20,7 +20,7 @@ While building this project, I gained experience with:
 ### Public (User-Facing)
 
 - Search and Suggest  
-  Fuzzy match service names like "n 26" → "N26"  
+  Fuzzy match service names like "b o0king" → "Booking.com"  
   Only services with active codes are shown
 
 - Get Referral Code  
@@ -32,7 +32,7 @@ While building this project, I gained experience with:
   Failed codes are marked with reasons (e.g. expired, used)
 
 - Code Copying  
-  Copy referral code or link to clipboard  
+  Copy referral code or link to the clipboard  
   Copy count is stored in the database
 
 - Explore Top Services  
@@ -55,7 +55,7 @@ Install dependencies:
 
 npm install
 
-Start development server:
+Start the development server:
 
 npm run dev
 
