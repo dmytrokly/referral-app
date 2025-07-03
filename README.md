@@ -1,6 +1,6 @@
 # Referral Code & Voucher Sharing App
 
-A simple web application to discover, submit, and manage referral codes and discount vouchers. Built with Next.js and Supabase, designed to be mobile-friendly and easy to maintain.
+A simple web application to discover, submit, and manage referral codes and discount vouchers. Built with Next.js and Supabase, it is designed to be mobile-friendly and easy to maintain.
 
 ## What I Learned
 
@@ -13,7 +13,6 @@ While building this project, I gained experience with:
 - Using the Clipboard API to let users copy code easily
 - Writing UI logic for retrying codes, handling copy state, and tracking feedback
 - Displaying lightweight usage statistics in the frontend
-- Managing optimistic UI updates for real-time interaction
 
 ## Features
 
